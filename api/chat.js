@@ -1,37 +1,32 @@
 export default async function handler(req, res) {
   const { message } = req.body;
 
-  // Check key first
+  // Check that the API key exists
   if (!process.env.GROQ_API_KEY) {
     console.error("GROQ_API_KEY missing");
     return res.status(500).json({ reply: "Server error: API key not set." });
   }
 
   try {
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama3-8b-8192",
-          messages: [
-            {
-              role: "system",
-              content: `
-You are Sindre AI. Friendly, smart, calm, slightly witty.
-`
-            },
-            { role: "user", content: message }
-          ]
-        })
-      }
-    );
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama3-13b", // ✅ Use a supported model here
+        messages: [
+          {
+            role: "system",
+            content: "You are Sindre AI. Friendly, intelligent, calm, and slightly witty. You explain things clearly and never talk down to the user."
+          },
+          { role: "user", content: message }
+        ]
+      })
+    });
 
-    // Check HTTP status
+    // Log and handle API errors
     if (!response.ok) {
       const text = await response.text();
       console.error("API error:", response.status, text);
@@ -40,7 +35,7 @@ You are Sindre AI. Friendly, smart, calm, slightly witty.
 
     const data = await response.json();
 
-    // Check if response structure is valid
+    // Make sure the AI returned a valid message
     if (!data.choices || !data.choices[0]?.message?.content) {
       console.error("Invalid AI response:", data);
       return res.status(500).json({ reply: "Server error: No response from AI." });
