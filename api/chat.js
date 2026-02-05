@@ -1,7 +1,9 @@
 export default async function handler(req, res) {
   const { message } = req.body;
 
+  // Check key first
   if (!process.env.GROQ_API_KEY) {
+    console.error("GROQ_API_KEY missing");
     return res.status(500).json({ reply: "Server error: API key not set." });
   }
 
@@ -20,12 +22,7 @@ export default async function handler(req, res) {
             {
               role: "system",
               content: `
-You are Sindre AI.
-
-You are friendly, intelligent, calm, and slightly witty.
-You explain things clearly and never talk down to the user.
-You behave like a personal assistant, not a robot.
-You keep answers concise unless the user asks for detail.
+You are Sindre AI. Friendly, smart, calm, slightly witty.
 `
             },
             { role: "user", content: message }
@@ -34,16 +31,25 @@ You keep answers concise unless the user asks for detail.
       }
     );
 
+    // Check HTTP status
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("API error:", response.status, text);
+      return res.status(response.status).json({ reply: "Server error: API request failed." });
+    }
+
     const data = await response.json();
 
-    if (!data.choices || !data.choices[0]) {
+    // Check if response structure is valid
+    if (!data.choices || !data.choices[0]?.message?.content) {
+      console.error("Invalid AI response:", data);
       return res.status(500).json({ reply: "Server error: No response from AI." });
     }
 
     res.status(200).json({ reply: data.choices[0].message.content });
 
   } catch (error) {
-    console.error(error);
+    console.error("Fetch failed:", error);
     res.status(500).json({ reply: "Server error: Unable to reach AI." });
   }
 }
